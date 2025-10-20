@@ -7,7 +7,7 @@ import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { TOKEN_LIST } from "./tokens";
 import { toast } from "react-toastify";
-import { getPoolPda, getSharePda, GPOOL_AUTHORITY } from "../app/AppContent";
+import { getPoolPda, getSharePda } from "../app/AppContent";
 import dynamic from "next/dynamic";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
@@ -156,7 +156,7 @@ const WalletBalances = memo(({ publicKey, connection, onBalanceClick, refreshCou
 
 WalletBalances.displayName = "WalletBalances";
 
-const StakedBalances = memo(({ publicKey, connection, onBalanceClick, refreshCount }) => {
+const StakedBalances = memo(({ publicKey, connection, onBalanceClick, refreshCount, gpoolAuthority }) => {
   const [stakedBalances, setStakedBalances] = useState([]);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
@@ -179,7 +179,7 @@ const StakedBalances = memo(({ publicKey, connection, onBalanceClick, refreshCou
   };
 
   const fetchStakedBalances = useCallback(async () => {
-    if (!publicKey || !connection) return;
+    if (!publicKey || !connection || !gpoolAuthority) return;
   
     try {
       // Prepare all PDAs to fetch in a single request
@@ -187,7 +187,7 @@ const StakedBalances = memo(({ publicKey, connection, onBalanceClick, refreshCou
         if (!token.mintAddress) return acc;
         
         const mint = new PublicKey(token.mintAddress);
-        const pool = getPoolPda(GPOOL_AUTHORITY);
+        const pool = getPoolPda(gpoolAuthority);
         const [sharePda] = getSharePda(publicKey, pool, mint);
         
         acc.push({
@@ -232,7 +232,7 @@ const StakedBalances = memo(({ publicKey, connection, onBalanceClick, refreshCou
       console.error("Error fetching staked balances:", error);
       setIsFirstLoad(false);
     }
-  }, [publicKey, connection]);
+  }, [publicKey, connection, gpoolAuthority]);
 
   useEffect(() => {
     fetchStakedBalances();
@@ -307,6 +307,13 @@ const ClaimableBalances = memo(({ publicKey, onClaimClick, refreshCount }) => {
       setClaimableBalances(data);
     } catch (error) {
       console.error("Error fetching claimable balances:", error);
+      toast.error("The API is currently unavailable, so claimable balances cannot be displayed.");
+      setClaimableBalances({
+        earned: 0,
+        claimed: 0,
+        earned_coal: 0,
+        claimed_coal: 0
+      });
     } finally {
       setIsLoading(false);
     }
@@ -385,7 +392,7 @@ const ClaimableBalances = memo(({ publicKey, onClaimClick, refreshCount }) => {
 
 ClaimableBalances.displayName = "ClaimableBalances";
 
-const WalletStatus = memo(({ connection, onBalanceClick, onClaimClick, isProcessing }) => {
+const WalletStatus = memo(({ connection, onBalanceClick, onClaimClick, isProcessing, gpoolAuthority }) => {
   const { publicKey } = useWallet();
   const [copied, setCopied] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
@@ -452,6 +459,7 @@ const WalletStatus = memo(({ connection, onBalanceClick, onClaimClick, isProcess
             connection={connection}
             onBalanceClick={onBalanceClick}
             refreshCount={refreshCount}
+            gpoolAuthority={gpoolAuthority}
           />
           <hr className="separator" />
           <ClaimableBalances

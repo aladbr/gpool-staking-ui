@@ -25,7 +25,6 @@ import bs58 from 'bs58';
 
 
 
-const GPOOL_AUTHORITY = new PublicKey("gpoo1atPkrKnfxQ4Qt214ErbgBBJeiksL1EjqBHynbo");
 const boostProgramId = new PublicKey("boostmPwypNUQu8qZ8RoWt5DXyYSVYxnBXqbbrGjecc");
 const poolProgramId = new PublicKey("poo1sKMYsZtDDS7og73L68etJQYyn6KXhXTLz1hizJc");
 
@@ -68,6 +67,17 @@ function getMemberPda(authority, pool) {
 
 function AppContent() {
   const { publicKey, sendTransaction } = useWallet();
+  const [gpoolAuthorityInput, setGpoolAuthorityInput] = useState(
+    "gpoo1atPkrKnfxQ4Qt214ErbgBBJeiksL1EjqBHynbo"
+  );
+
+  const gpoolAuthority = useMemo(() => {
+    try {
+      return new PublicKey(gpoolAuthorityInput);
+    } catch (e) {
+      return null;
+    }
+  }, [gpoolAuthorityInput]);
   const [amount, setAmount] = useState("");
   const [claimAmount, setClaimAmount] = useState("");
   const [mintAddress, setMintAddress] = useState(
@@ -189,6 +199,10 @@ function AppContent() {
       toast.error("Please enter a valid amount to stake.");
       return;
     }
+    if (!gpoolAuthority) {
+      toast.error("Invalid GPool Authority address");
+      return;
+    }
 
     try {
       setIsProcessing(true);
@@ -197,7 +211,7 @@ function AppContent() {
       const mint = new PublicKey(mintAddress);
       const lp_decimals = mintAddressToDecimals[mintAddress] || 11;
       const stakeAmount = BigInt(Math.floor(stakeAmountFloat * 10 ** lp_decimals));
-      const pool = getPoolPda(GPOOL_AUTHORITY);
+      const pool = getPoolPda(gpoolAuthority);
       const [share_pda, share_bump] = getSharePda(staker, pool, mint);
       const [member_pda, member_bump] = getMemberPda(staker, pool);
 
@@ -253,11 +267,16 @@ function AppContent() {
     miner,
     connection,
     getDelegatedBoostAddress,
+    gpoolAuthority,
   ]);
 
   const handleUnstakeBoost = useCallback(async () => {
     if (!publicKey) {
       toast.error("Please connect your wallet");
+      return;
+    }
+    if (!gpoolAuthority) {
+      toast.error("Invalid GPool Authority address");
       return;
     }
 
@@ -314,6 +333,7 @@ function AppContent() {
     decimals,
     miner,
     connection,
+    gpoolAuthority,
   ]);
 
   const MIN_BALANCE = 5_000_000_000;
@@ -409,12 +429,12 @@ function AppContent() {
     }
   };
 
-  const createPoolOpenShareInstruction = async (
+  const createPoolOpenShareInstruction = useCallback(async (
     staker,
     mint
   ) => {
     const boost = getBoostPda(mint);
-    const pool = getPoolPda(GPOOL_AUTHORITY);
+    const pool = getPoolPda(gpoolAuthority);
     const [share, share_bump] = getSharePda(staker, pool, mint);
     const stake = getStakePda(pool, boost);
 
@@ -433,10 +453,10 @@ function AppContent() {
     });
 
     return instruction;
-  }
+  }, [gpoolAuthority]);
 
-  const createPoolMemberInstruction = async (memberAuthority) => {
-    const pool = getPoolPda(GPOOL_AUTHORITY);
+  const createPoolMemberInstruction = useCallback(async (memberAuthority) => {
+    const pool = getPoolPda(gpoolAuthority);
     const [member, member_bump] = getMemberPda(memberAuthority, pool);
 
     const instruction = new TransactionInstruction({
@@ -453,14 +473,14 @@ function AppContent() {
     });
 
     return instruction;
-  };
+  }, [gpoolAuthority]);
 
-  const createPoolStakeInstruction = async (
+  const createPoolStakeInstruction = useCallback(async (
     memberAuthority,
     mint,
     amount
   ) => {
-    const pool = getPoolPda(GPOOL_AUTHORITY);
+    const pool = getPoolPda(gpoolAuthority);
     const poolTokens = getAssociatedTokenAddressSync(mint, pool, true);
     const [member, member_bump] = getMemberPda(memberAuthority, pool);
     const [share, share_bump] = getSharePda(memberAuthority, pool, mint);
@@ -485,13 +505,13 @@ function AppContent() {
     });
 
     return instruction;
-  };
-  const createPoolUnstakeInstruction = async (
+  }, [gpoolAuthority]);
+  const createPoolUnstakeInstruction = useCallback(async (
     memberAuthority,
     mint,
     amount
   ) => {
-    const pool = getPoolPda(GPOOL_AUTHORITY);
+    const pool = getPoolPda(gpoolAuthority);
     const poolTokens = getAssociatedTokenAddressSync(mint, pool, true);
     const [member, member_bump] = getMemberPda(memberAuthority, pool);
     const [share, share_bump] = getSharePda(memberAuthority, pool, mint);
@@ -526,7 +546,7 @@ function AppContent() {
     });
 
     return instruction;
-  };
+  }, [gpoolAuthority]);
   const formatBalanceApp = (balance) => {
     const num = Number(balance);
     return !isNaN(num) ? num.toFixed(2) : "0.00";
@@ -640,6 +660,24 @@ function AppContent() {
           </div>
         </header>
 
+        <div className="card" style={{ marginBottom: "20px" }}>
+          <h3 className="section-title">Pool Authority</h3>
+          <div className="input-group">
+            <input
+              type="text"
+              value={gpoolAuthorityInput}
+              onChange={(e) => setGpoolAuthorityInput(e.target.value)}
+              placeholder="Enter Pool Authority Address"
+              className="amount-input"
+            />
+          </div>
+          {!gpoolAuthority && gpoolAuthorityInput && (
+            <div className="boost-inactive-hint" style={{ marginTop: "10px" }}>
+              Invalid Pool Authority address
+            </div>
+          )}
+        </div>
+
         <div className="dashboard-link">
           <a
             href="https://dashboard.gpool.cloud/"
@@ -662,6 +700,7 @@ function AppContent() {
             onBalanceClick={handleBalanceClick}
             onClaimClick={handleClaimClick}
             isProcessing={isProcessing}
+            gpoolAuthority={gpoolAuthority}
           />
 
           <hr className="separator" />
@@ -780,4 +819,4 @@ function AppContent() {
 }
 
 export default AppContent;
-export { getBoostPda, getPoolPda, getSharePda, getStakePda, GPOOL_AUTHORITY };
+export { getBoostPda, getPoolPda, getSharePda, getStakePda };
