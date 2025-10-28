@@ -18,11 +18,12 @@ for unstaking:
 ```bash
 npm install
 ```
+2. Create `.env` file in the root folder and add `NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=...` there, make sure to use free Helius RPC instead of default `https://api.mainnet-beta.solana.com`, otherwise it may NOT work
 
-2. Run the development server:
+3. Run the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
