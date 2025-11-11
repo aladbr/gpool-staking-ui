@@ -68,7 +68,7 @@ function getMemberPda(authority, pool) {
 function AppContent() {
   const { publicKey, sendTransaction } = useWallet();
   const [gpoolAuthorityInput, setGpoolAuthorityInput] = useState(
-    "gpoo1atPkrKnfxQ4Qt214ErbgBBJeiksL1EjqBHynbo"
+    "1scyruNVoU5yu25XAQ9A2MRYwcAgoSR1uAMRV7jUTKP"
   );
 
   const gpoolAuthority = useMemo(() => {
